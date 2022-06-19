@@ -2,15 +2,17 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
+	"crypto/md5"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 type LinkRequest struct {
@@ -83,7 +85,7 @@ func main() {
 		requestBody := LinkRequest{}
 		context.Bind(&requestBody)
 
-		if requestBody.Password != config.Password { // Exits if the user does not know the password
+		if md5.Sum([]byte(requestBody.Password)) != md5.Sum([]byte(config.Password)) { // Exits if a wrong password was provided
 			context.JSON(http.StatusUnauthorized, gin.H{})
 			return
 		}
