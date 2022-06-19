@@ -1,5 +1,7 @@
 # URL Shortener
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/epic-programmer-guy/url-shortener)](https://goreportcard.com/report/github.com/epic-programmer-guy/url-shortener)
+
 This is a simple URL shortener using the [Gin](https://github.com/gin-gonic/gin) framework and the [GORM](https://gorm.io/) ORM.
 To make the links as short as reasonably possible only 65536 can be created, meaning that this is not suitable for public websites etc.
 Additionally, the only way to add links is to use an api endpoint.
