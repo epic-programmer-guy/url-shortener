@@ -5,6 +5,7 @@
 This is a simple URL shortener using the [Gin](https://github.com/gin-gonic/gin) framework and the [GORM](https://gorm.io/) ORM.
 To make the links as short as reasonably possible only 65536 can be created, meaning that this is not suitable for public websites etc.
 Additionally, the only way to add links is to use an api endpoint.
+The addresses for the links are randomly generated.
 
 To use this project you must add a configuration file as such to the folder in which the binary lies.
 
