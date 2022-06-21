@@ -116,12 +116,9 @@ func main() {
 				return
 			}
 		}
-		println(u.Host)
-		println(u.String())
 		if strings.Split(u.Host, ".")[0] == "www" { // If the adress starts with "www."...
 			print(u.Host+" - > ")
 			u.Host = strings.Replace(u.Host, "www.", "", 1) // ...replace it with ""
-			println(u.Host)
 		}
 		var splits uint8
 		splits = 1
@@ -135,7 +132,6 @@ func main() {
 		}
 
 		if flag || splits < 2 {
-			println(u.Host)
 			context.JSON(http.StatusBadRequest, gin.H{
 				"message": "Malformed URL",
 			})
