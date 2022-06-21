@@ -5,6 +5,7 @@
 This is a simple URL shortener using the [Gin](https://github.com/gin-gonic/gin) framework and the [GORM](https://gorm.io/) ORM.
 To make the links as short as reasonably possible only 65536 can be created, meaning that this is not suitable for public websites etc.
 Additionally, the only way to add links is to use an api endpoint.
+The addresses are randomly generated.
 
 To use this project you must add a configuration file as such to the folder in which the binary lies.
 
@@ -24,7 +25,7 @@ Resources for this website, such as stylesheets or images may be placed in the r
 
 ## Usage
 The API endpoint to add links is ```127.0.0.1:8080/placeholder/add```
-Add new links by POSTing a form data containing the link as "link" and the password as "password".
+Add new links by POSTing an html form containing the link as "link" and the password as "password".
 A JSON containing the shortened address will be returned to you, unless an error has occured.
 I recommend [Postman](https://www.postman.com/) for ease of use.
 
