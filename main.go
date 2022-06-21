@@ -1,18 +1,22 @@
 package main
 
 import (
-	"encoding/json"
 	"crypto/md5"
+	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type LinkRequest struct {
@@ -58,7 +62,9 @@ func main() {
 
 	println("using database " + config.DBname)
 
-	db, err := gorm.Open(sqlite.Open(config.DBname), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(config.DBname), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
 
 	if err != nil {
 		log.Fatalln("failed to connect database")
@@ -90,23 +96,66 @@ func main() {
 			return
 		}
 
-		link := Link{Target: "some random text"}
-		var rng uint16
 
-		for link.Target != "" {
-			rng = uint16(rand.Uint32())
-			link.Target = ""               // Set target to an empty string...
-			db.First(&link, "id = ?", rng) // ...except if the id happens to already be in use
+		println("Reformatting URL...")
+		var u *url.URL
+		u, err := url.Parse(requestBody.Address)
+		if err != nil {
+			context.JSON(http.StatusBadRequest, gin.H{
+				"message": "Couldn't parse provided URL",
+			})
+			return
 		}
 
-		link.Id = rng
-		link.Target = requestBody.Address
+		if u.Scheme == "" { //Default to https if no scheme was provided
+			u, err = url.Parse("https://"+u.String()) // The URL object must be created again, so that the host can correctly be identified
+			if err != nil {
+				context.JSON(http.StatusBadRequest, gin.H{
+					"message": "Couldn't parse provided URL",
+				})
+				return
+			}
+		}
+		println(u.Host)
+		println(u.String())
+		if strings.Split(u.Host, ".")[0] == "www" { // If the adress starts with "www."...
+			print(u.Host+" - > ")
+			u.Host = strings.Replace(u.Host, "www.", "", 1) // ...replace it with ""
+			println(u.Host)
+		}
+		var splits uint8
+		splits = 1
+		flag := false
+		for _, element := range strings.Split(u.Host, "."){
+			splits++
+			if len(element)<1 {
+				flag = true
+				break
+			}
+		}
 
-		db.Create(&link)
+		if flag || splits < 2 {
+			println(u.Host)
+			context.JSON(http.StatusBadRequest, gin.H{
+				"message": "Malformed URL",
+			})
+			return
+		}
+
+		requestBody.Address = u.String()
+
+		link := Link{Target: requestBody.Address}
+		result := db.First(&link, "target = ?", link.Target)
+
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) { //First or create sadly does not allow you to override id
+			println("Adding new link...")
+			link.Id = generateUnusedId(db)
+			db.Create(&link)
+		}
 		db.Save(&link)
 
 		context.JSON(200, gin.H{
-			"address": "/" + config.Prefix + parseIdInt(rng),
+			"address": "/" + config.Prefix + parseIdInt(link.Id),
 		})
 	})
 
@@ -115,14 +164,14 @@ func main() {
 	///
 	router.GET("/"+config.Prefix+":id", func(context *gin.Context) {
 		var link Link
-		i, err := parseIdString(context.Param("id"))
+		id, err := parseIdString(context.Param("id"))
 
 		if err != nil {
 			context.HTML(http.StatusBadRequest, "badrequest.html", gin.H{"title": "400 - Bad Request"})
 			return
 		}
 
-		db.First(&link, "id = ?", i)
+		db.First(&link, "id = ?", id)
 
 		if link.Target == "" {
 			context.HTML(http.StatusBadRequest, "badrequest.html", gin.H{"title": "400 - Bad Request"})
@@ -154,4 +203,14 @@ func parseIdString(idString string) (uint16, error) {
 
 func parseIdInt(idInt uint16) string {
 	return strconv.FormatUint(uint64(idInt), 16)
+}
+
+func generateUnusedId(db *gorm.DB) uint16 {
+	r := Link{Target: "some random text"}
+	for r.Target != "" {
+		r.Id = uint16(rand.Uint32())
+		r.Target = ""                // (Re-)Set target to ""...
+		db.First(&r, "id = ?", r.Id) // ...except if the id happens to already be in use
+	}
+	return r.Id
 }
