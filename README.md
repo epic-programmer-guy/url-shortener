@@ -25,7 +25,7 @@ Resources for this website, such as stylesheets or images may be placed in the r
 
 ## Usage
 The API endpoint to add links is ```127.0.0.1:8080/placeholder/add```
-Add new links by POSTing a form data containing the link as "link" and the password as "password".
+Add new links by POSTing an html form containing the link as "link" and the password as "password".
 A JSON containing the shortened address will be returned to you, unless an error has occured.
 I recommend [Postman](https://www.postman.com/) for ease of use.
 
