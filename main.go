@@ -90,6 +90,13 @@ func main() {
 	})
 
 	///
+	/// API endpoint for removing links
+	///
+	router.POST("/"+config.Prefix+"remove", func(context *gin.Context) {
+		removeLink(context, db)
+	})
+
+	///
 	/// Redirect
 	///
 	router.GET("/"+config.Prefix+":id", func(context *gin.Context) {
@@ -120,49 +127,15 @@ func addLink(context *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	println("Reformatting URL...")
-	var u *url.URL
-	u, err := url.Parse(requestBody.Address)
+	re, err := reformatUrl(requestBody.Address)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{
-			"message": "Couldn't parse provided URL",
+			"message": "Error parsing URL",
 		})
-		return
 	}
 
-	if u.Scheme == "" { //Default to https if no scheme was provided
-		u, err = url.Parse("https://" + u.String()) // The URL object must be created again, so that the host can correctly be identified
-		if err != nil {
-			context.JSON(http.StatusBadRequest, gin.H{
-				"message": "Couldn't parse provided URL",
-			})
-			return
-		}
-	}
-	if strings.Split(u.Host, ".")[0] == "www" { // If the adress starts with "www."...
-		u.Host = strings.Replace(u.Host, "www.", "", 1) // ...replace it with ""
-	}
-	var splits uint8
-	splits = 1
-	flag := false
-	for _, element := range strings.Split(u.Host, ".") {
-		splits++
-		if len(element) < 1 {
-			flag = true
-			break
-		}
-	}
 
-	if flag || splits < 2 {
-		context.JSON(http.StatusBadRequest, gin.H{
-			"message": "Malformed URL",
-		})
-		return
-	}
-
-	requestBody.Address = u.String()
-
-	link := Link{Target: requestBody.Address}
+	link := Link{Target: re}
 	result := db.First(&link, "target = ?", link.Target)
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) { //First or create sadly does not allow you to override id
@@ -176,6 +149,34 @@ func addLink(context *gin.Context, db *gorm.DB) {
 		"address": "/" + config.Prefix + parseIdInt(link.Id),
 	})
 }
+
+func removeLink(context *gin.Context, db *gorm.DB) {
+	requestBody := LinkRequest{}
+	context.Bind(&requestBody)
+	
+	if md5.Sum([]byte(requestBody.Password)) != config.hashed { // Exits if a wrong password was provided
+		context.JSON(http.StatusUnauthorized, gin.H{})
+		return
+	}
+
+	re, err := reformatUrl(requestBody.Address)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "Error parsing URL",
+		})
+		return
+	}
+
+	var link Link
+	db.First(&link, "target = ?", re)
+	db.Delete(&link, 1)
+	db.Save(&link)
+
+	context.JSON(200, gin.H{
+		"message": requestBody.Address+" removed",
+	})
+}
+
 
 func redirectToTarget(context *gin.Context, db *gorm.DB) {
 	var link Link
@@ -194,6 +195,41 @@ func redirectToTarget(context *gin.Context, db *gorm.DB) {
 	}
 
 	context.Redirect(http.StatusMovedPermanently, link.Target)
+}
+
+func reformatUrl(s string) (string, error){
+	println("Reformatting URL...")
+	var u *url.URL
+	u, err := url.Parse(s)
+	if err != nil {
+		return "", err
+	}
+
+	if u.Scheme == "" { //Default to https if no scheme was provided
+		u, err = url.Parse("https://" + u.String()) // The URL object must be created again, so that the host can correctly be identified
+		if err != nil {
+			return "", err
+		}
+	}
+	if strings.Split(u.Host, ".")[0] == "www" { // If the adress starts with "www."...
+		u.Host = strings.Replace(u.Host, "www.", "", 1) // ...replace it with ""
+	}
+	var splits uint8
+	splits = 1
+	flag := false
+	for _, element := range strings.Split(u.Host, ".") {
+		splits++
+		if len(element) < 1 {
+			flag = true
+			break
+		}
+	}
+
+	if flag || splits < 2 {
+		return "", errors.New("Malformed URL")
+	}
+
+	return u.String(), nil
 }
 
 func parseIdString(idString string) (uint16, error) {
