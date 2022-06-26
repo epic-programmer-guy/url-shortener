@@ -85,14 +85,14 @@ func main() {
 	///
 	/// API endpoint for adding the links
 	///
-	router.POST("/"+config.Prefix+"add", func(context *gin.Context) {
+	router.POST("/api/add", func(context *gin.Context) {
 		addLink(context, db)
 	})
 
 	///
 	/// API endpoint for removing links
 	///
-	router.POST("/"+config.Prefix+"remove", func(context *gin.Context) {
+	router.POST("/api/remove", func(context *gin.Context) {
 		removeLink(context, db)
 	})
 
@@ -134,7 +134,6 @@ func addLink(context *gin.Context, db *gorm.DB) {
 		})
 	}
 
-
 	link := Link{Target: re}
 	result := db.First(&link, "target = ?", link.Target)
 
@@ -153,7 +152,7 @@ func addLink(context *gin.Context, db *gorm.DB) {
 func removeLink(context *gin.Context, db *gorm.DB) {
 	requestBody := LinkRequest{}
 	context.Bind(&requestBody)
-	
+
 	if md5.Sum([]byte(requestBody.Password)) != config.hashed { // Exits if a wrong password was provided
 		context.JSON(http.StatusUnauthorized, gin.H{})
 		return
@@ -169,14 +168,20 @@ func removeLink(context *gin.Context, db *gorm.DB) {
 
 	var link Link
 	db.First(&link, "target = ?", re)
+	if link.Target == "" {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "Link not found",
+		})
+		return
+	}
 	db.Delete(&link, 1)
 	db.Save(&link)
 
+	println("Removed a link pointing to " + requestBody.Address)
 	context.JSON(200, gin.H{
-		"message": requestBody.Address+" removed",
+		"message": requestBody.Address + " removed",
 	})
 }
-
 
 func redirectToTarget(context *gin.Context, db *gorm.DB) {
 	var link Link
@@ -197,8 +202,7 @@ func redirectToTarget(context *gin.Context, db *gorm.DB) {
 	context.Redirect(http.StatusMovedPermanently, link.Target)
 }
 
-func reformatUrl(s string) (string, error){
-	println("Reformatting URL...")
+func reformatUrl(s string) (string, error) {
 	var u *url.URL
 	u, err := url.Parse(s)
 	if err != nil {
