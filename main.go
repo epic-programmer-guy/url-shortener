@@ -26,7 +26,7 @@ type LinkRequest struct {
 
 type Link struct {
 	gorm.Model
-	Id     uint16
+	Id     uint32
 	Target string
 }
 
@@ -236,19 +236,44 @@ func reformatUrl(s string) (string, error) {
 	return u.String(), nil
 }
 
-func parseIdString(idString string) (uint16, error) {
-	i, err := strconv.ParseUint(idString, 16, 32)
-	return uint16(i), err
+func parseIdString(idString string) (uint32, error) {
+	for _, element := range idString { //This for-loop reverses the changes made to a standard base32 representation of a given integer
+		if element > 'o' {
+			element--
+		} // Yes o
+		if element >= 'l' {
+			element--
+		} // Yes l
+		if element >= 'i' {
+			element--
+		} // Yes i
+		element-- // Yes 0
+	}
+	i, err := strconv.ParseUint(idString, 32, 32)
+	return uint32(i), err
 }
 
-func parseIdInt(idInt uint16) string {
-	return strconv.FormatUint(uint64(idInt), 16)
+func parseIdInt(idInt uint32) string {
+	idString := strconv.FormatInt(int64(idInt), 32)
+	for _, element := range idString { //This for-loop changes what characters are used within the idString
+		element++ // No 0
+		if element >= 'i' {
+			element++
+		} // No i
+		if element >= 'l' {
+			element++
+		} // No l
+		if element >= 'o' {
+			element++
+		} // No o
+	}
+	return idString
 }
 
-func generateUnusedId(db *gorm.DB) uint16 {
+func generateUnusedId(db *gorm.DB) uint32 {
 	r := Link{Target: "some random text"}
 	for r.Target != "" {
-		r.Id = uint16(rand.Uint32())
+		r.Id = rand.Uint32() >> 12
 		r.Target = ""                // (Re-)Set target to ""...
 		db.First(&r, "id = ?", r.Id) // ...except if the id happens to already be in use
 	}

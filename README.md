@@ -34,4 +34,5 @@ I recommend [Postman](https://www.postman.com/) for ease of use.
 
 ### Deleting links
 The API endpoint to remove links is ```127.0.0.1:8080/api/remove```
+
 Simply provide the link a shortened link is pointing to to remove it.
