@@ -24,6 +24,12 @@ type LinkRequest struct {
 	Password string `form:"password" json:"password" xml:"password" binding:"required"`
 }
 
+type LinkUpdateRequest struct {
+	OldAddress string `form:"old_address" json:"old_address" xml:"old_address" binding:"required"`
+	NewAddress string `form:"new_address" json:"new_address" xml:"new_address" binding:"required"`
+	Password   string `form:"password" json:"password" xml:"password" binding:"required"`
+}
+
 type Link struct {
 	gorm.Model
 	Id     uint32
@@ -94,6 +100,13 @@ func main() {
 	///
 	router.POST("/api/remove", func(context *gin.Context) {
 		removeLink(context, db)
+	})
+
+	///
+	/// API endpoint for updating existing links (for example if a resource has been moved)
+	///
+	router.POST("/api/update", func(context *gin.Context) {
+		updateLink(context, db)
 	})
 
 	///
@@ -180,6 +193,48 @@ func removeLink(context *gin.Context, db *gorm.DB) {
 	println("Removed a link pointing to " + requestBody.Address)
 	context.JSON(200, gin.H{
 		"message": requestBody.Address + " removed",
+	})
+}
+
+func updateLink(context *gin.Context, db *gorm.DB) {
+	requestBody := LinkUpdateRequest{}
+	context.Bind(&requestBody)
+
+	if md5.Sum([]byte(requestBody.Password)) != config.hashed { // Exits if a wrong password was provided
+		context.JSON(http.StatusUnauthorized, gin.H{})
+		return
+	}
+
+	oldRe, err := reformatUrl(requestBody.OldAddress)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "Error parsing first URL",
+		})
+		return
+	}
+
+	var link Link
+	db.First(&link, "target = ?", oldRe)
+	if link.Target == "" {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "Link not found",
+		})
+		return
+	}
+
+	newRe, err := reformatUrl(requestBody.NewAddress)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "Error parsing second URL",
+		})
+		return
+	}
+
+	db.Model(&link).Update("Target", newRe)
+
+	println("Update a link that pointed to " + requestBody.OldAddress + "\nto point to " + requestBody.NewAddress)
+	context.JSON(200, gin.H{
+		"message": "Successfully updated Link to now point to " + requestBody.NewAddress,
 	})
 }
 

@@ -3,8 +3,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/epic-programmer-guy/url-shortener)](https://goreportcard.com/report/github.com/epic-programmer-guy/url-shortener)
 
 This is a simple URL shortener using the [Gin](https://github.com/gin-gonic/gin) framework and the [GORM](https://gorm.io/) ORM.
-To make the links as short as reasonably possible only 65536 can be created, meaning that this is not suitable for public websites etc.
-Additionally, the only way to add links is to use an api endpoint.
+The only way to add links is to use an api endpoint, meaning that this is not suitable for public websites etc.
 The addresses are randomly generated.
 
 To use this project you must add a configuration file as such to the folder in which the binary lies.
@@ -36,3 +35,8 @@ I recommend [Postman](https://www.postman.com/) for ease of use.
 The API endpoint to remove links is ```127.0.0.1:8080/api/remove```
 
 Simply provide the link a shortened link is pointing to to remove it.
+
+### Updating links
+Links can be updated by specifying their current target as ```old_target``` and their new target as ```new_target```
+
+The API endpoint to do this is ````127.0.0.1:8080/api/update```
