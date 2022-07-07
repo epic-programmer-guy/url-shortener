@@ -35,9 +35,9 @@ I recommend [Postman](https://www.postman.com/) for ease of use.
 ### Deleting Links
 The API endpoint to remove links is ```127.0.0.1:8080/api/remove```
 
-Simply provide the link a shortened link is pointing to to remove it.
+Simply provide the target of a shortened link to remove it.
 
 ### Updating Links
 Links can be updated by specifying their current target as ```old_address``` and their new target as ```new_address```
 
-The API endpoint to do this is ````127.0.0.1:8080/api/update```
+The API endpoint to do this is ```127.0.0.1:8080/api/update```
